@@ -218,6 +218,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/users?id=${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
+      }
+    } catch {
+      console.error('Failed to delete user');
+    }
+  };
+
   const graphData = useMemo(() => {
     if (users.length < 2) return { nodes: [], links: [] };
 
@@ -558,6 +573,52 @@ export default function AdminDashboard() {
               </>
             )}
           </div>
+        </div>
+
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">All Users</h2>
+          {users.length === 0 ? (
+            <p className="text-zinc-600 dark:text-zinc-400">No users yet</p>
+          ) : (
+            <div className="space-y-2">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                      style={{
+                        backgroundColor: TRAIT_COLORS[getTopTrait({
+                          sporty: user.sporty,
+                          creative: user.creative,
+                          social: user.social,
+                          logical: user.logical,
+                          adventurous: user.adventurous,
+                          calm: user.calm,
+                        })],
+                      }}
+                    >
+                      {user.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-zinc-900 dark:text-white">{user.name}</h3>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {user.sporty !== null ? 'Quiz completed' : 'Quiz not completed'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteUser(user.id, user.name)}
+                    className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
