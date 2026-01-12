@@ -1,5 +1,5 @@
 {
-  "name": "workshop-1",
+  "name": "personality-workshop",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/pg": "^8.16.0",
+    "d3": "^7.9.0",
+    "dotenv": "^17.2.3",
     "next": "16.1.1",
+    "pg": "^8.16.3",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
