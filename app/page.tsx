@@ -31,7 +31,7 @@ export default function LoginPage() {
 
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('userName', data.user.name);
-      router.push('/intro');
+      router.push('/quiz');
     } catch {
       setError('Failed to connect to server');
       setIsLoading(false);
