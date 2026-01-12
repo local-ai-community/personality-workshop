@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     matches.sort((a, b) => a.distance - b.distance);
 
-    return NextResponse.json({ matches: matches.slice(0, 5) });
+    return NextResponse.json({ matches });
   } catch (error) {
     console.error('Get matches error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

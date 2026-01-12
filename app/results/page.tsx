@@ -10,8 +10,9 @@ export default function ResultsPage() {
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [vector, setVector] = useState<PersonalityVector | null>(null);
-  const [matches, setMatches] = useState<{ id: number; name: string; distance: number }[] | null>(null);
+  const [matches, setMatches] = useState<{ id: number; name: string; distance: number; isNew?: boolean }[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liveConnected, setLiveConnected] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +39,8 @@ export default function ResultsPage() {
         if (matchesRes.matches) {
           setMatches(matchesRes.matches);
         }
+
+        setLiveConnected(true);
       } catch (err) {
         console.error('Failed to fetch results', err);
       }
@@ -47,6 +50,73 @@ export default function ResultsPage() {
 
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+
+    let eventSource: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const connect = () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      eventSource = new EventSource(`/api/matches/stream?userId=${userId}`);
+
+      eventSource.onopen = () => {
+        setLiveConnected(true);
+        retryCount = 0;
+      };
+
+      eventSource.onerror = () => {
+        setLiveConnected(false);
+
+        if (eventSource) {
+          eventSource.close();
+        }
+
+        if (retryCount < maxRetries) {
+          retryCount++;
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          retryTimeout = setTimeout(connect, delay);
+        }
+      };
+
+      eventSource.onmessage = (event) => {
+        if (event.data === ': keep-alive') return;
+
+        try {
+          const newMatch = JSON.parse(event.data);
+          setMatches((prevMatches) => {
+            if (!prevMatches) return [newMatch];
+
+            const updated = [newMatch, ...prevMatches];
+            updated.sort((a, b) => a.distance - b.distance);
+            return updated.map((match) =>
+              match.id === newMatch.id ? { ...match, isNew: true } : match
+            );
+          });
+        } catch (error) {
+          console.error('Failed to parse SSE message:', error);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -109,12 +179,31 @@ export default function ResultsPage() {
 
         {matches && matches.length > 0 && (
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">Your Top Matches</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Your Top Matches</h2>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {liveConnected ? 'Live' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
             <div className="space-y-3">
               {matches.map((match, index) => (
                 <div
                   key={match.id}
-                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                  className={`flex items-center justify-between p-4 rounded-lg transition-all duration-300 ${
+                    match.isNew
+                      ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-400'
+                      : 'bg-zinc-50 dark:bg-zinc-800'
+                  }`}
+                  onClick={() => {
+                    if (match.isNew) {
+                      setMatches((prev) =>
+                        prev ? prev.map((m) => (m.id === match.id ? { ...m, isNew: false } : m)) : null
+                      );
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold">
@@ -122,6 +211,11 @@ export default function ResultsPage() {
                     </div>
                     <span className="text-lg font-medium text-zinc-900 dark:text-white">
                       {match.name}
+                      {match.isNew && (
+                        <span className="ml-2 text-xs px-2 py-1 bg-green-500 text-white rounded-full animate-pulse">
+                          NEW
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="text-sm text-zinc-600 dark:text-zinc-400">

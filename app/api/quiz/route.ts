@@ -86,7 +86,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ quiz: result.rows[0] }, { status: 200 });
+    const quiz = result.rows[0];
+
+    const userResult = await query(
+      'SELECT name FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length > 0) {
+      const payload = JSON.stringify({
+        userId,
+        name: userResult.rows[0].name,
+        sporty: quiz.sporty,
+        creative: quiz.creative,
+        social: quiz.social,
+        logical: quiz.logical,
+        adventurous: quiz.adventurous,
+        calm: quiz.calm,
+      });
+
+      await query(`NOTIFY quiz_updates, '${payload}'`);
+    }
+
+    return NextResponse.json({ quiz }, { status: 200 });
   } catch (error) {
     console.error('Quiz submission error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

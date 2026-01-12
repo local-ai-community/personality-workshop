@@ -1,0 +1,17 @@
+{
+  "name": "Personality Workshop",
+  "short_name": "Personality",
+  "description": "Discover your personality traits and find people similar to you",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
