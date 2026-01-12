@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import * as d3 from 'd3';
-import { PersonalityDimension } from '@/types';
-import { getTopTrait } from '@/lib/vector';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { PersonalityDimension, PersonalityVector } from '@/types';
+import { getTopTrait, calculateEuclideanDistance } from '@/lib/vector';
+import { projectTo2D } from '@/lib/pca';
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
 
 interface UserNode {
   id: number;
@@ -14,6 +17,24 @@ interface UserNode {
   logical: number;
   adventurous: number;
   calm: number;
+}
+
+interface GraphNode {
+  id: number;
+  name: string;
+  color: string;
+  topTrait: PersonalityDimension;
+  vector: PersonalityVector;
+  x?: number;
+  y?: number;
+  fx?: number;
+  fy?: number;
+}
+
+interface GraphLink {
+  source: number;
+  target: number;
+  similarity: number;
 }
 
 const TRAIT_COLORS: Record<PersonalityDimension, string> = {
@@ -31,7 +52,115 @@ export default function AdminDashboard() {
   const [authError, setAuthError] = useState('');
   const [users, setUsers] = useState<UserNode[]>([]);
   const [loading, setLoading] = useState(false);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+  const [showInfo, setShowInfo] = useState(true);
+  const [liveConnected, setLiveConnected] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<any>(null);
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: 600,
+        });
+      }
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Center and zoom to fit all nodes when graph loads
+  useEffect(() => {
+    if (graphRef.current && users.length >= 2) {
+      // Delay to ensure graph is rendered
+      setTimeout(() => {
+        graphRef.current?.centerAt(0, 0, 300);
+        graphRef.current?.zoomToFit(400, 100);
+      }, 300);
+    }
+  }, [users]);
+
+  const handleZoomIn = () => {
+    graphRef.current?.zoom(graphRef.current.zoom() * 1.5, 300);
+  };
+
+  const handleZoomOut = () => {
+    graphRef.current?.zoom(graphRef.current.zoom() / 1.5, 300);
+  };
+
+  const handleZoomToFit = () => {
+    graphRef.current?.centerAt(0, 0, 200);
+    graphRef.current?.zoomToFit(400, 100);
+  };
+
+  // SSE connection for live updates
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let eventSource: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const connect = () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      eventSource = new EventSource('/api/admin/stream');
+
+      eventSource.onopen = () => {
+        setLiveConnected(true);
+        retryCount = 0;
+      };
+
+      eventSource.onerror = () => {
+        setLiveConnected(false);
+
+        if (eventSource) {
+          eventSource.close();
+        }
+
+        if (retryCount < maxRetries) {
+          retryCount++;
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          retryTimeout = setTimeout(connect, delay);
+        }
+      };
+
+      eventSource.onmessage = (event) => {
+        if (event.data === ': keep-alive') return;
+
+        try {
+          const newUser: UserNode = JSON.parse(event.data);
+          setUsers((prevUsers) => {
+            // Check if user already exists
+            if (prevUsers.some(u => u.id === newUser.id)) {
+              return prevUsers;
+            }
+            return [...prevUsers, newUser];
+          });
+        } catch (error) {
+          console.error('Failed to parse SSE message:', error);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [isAuthenticated]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,96 +218,109 @@ export default function AdminDashboard() {
     }
   };
 
-  const renderNetwork = useCallback(() => {
-    if (!svgRef.current) return;
+  const graphData = useMemo(() => {
+    if (users.length < 2) return { nodes: [], links: [] };
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
+    // Project to 2D using PCA
+    const vectors = users.map(u => [u.sporty, u.creative, u.social, u.logical, u.adventurous, u.calm]);
+    const projected = projectTo2D(vectors);
 
-    const width = svgRef.current?.clientWidth || 800;
-    const height = 600;
+    // Scale to fit canvas (center the graph)
+    const padding = 100;
+    const xValues = projected.map(p => p.x);
+    const yValues = projected.map(p => p.y);
+    const xMin = Math.min(...xValues);
+    const xMax = Math.max(...xValues);
+    const yMin = Math.min(...yValues);
+    const yMax = Math.max(...yValues);
+    const xRange = xMax - xMin || 1;
+    const yRange = yMax - yMin || 1;
 
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 4])
-      .on('zoom', (event: any) => {
-        g.attr('transform', event.transform);
-      });
+    // Create nodes with FIXED PCA positions centered at (0,0) for ForceGraph
+    // Use smaller spread to keep nodes visible
+    const spreadFactor = 0.6;
+    const graphWidth = (dimensions.width - 2 * padding) * spreadFactor;
+    const graphHeight = (dimensions.height - 2 * padding) * spreadFactor;
 
-    svg.call(zoom as any);
+    const nodes: GraphNode[] = users.map((u, i) => {
+      const vector: PersonalityVector = {
+        sporty: u.sporty,
+        creative: u.creative,
+        social: u.social,
+        logical: u.logical,
+        adventurous: u.adventurous,
+        calm: u.calm,
+      };
+      const topTrait = getTopTrait(vector);
 
-    const g = svg.append('g');
+      // Center coordinates around (0,0) for ForceGraph2D
+      const x = ((projected[i].x - xMin) / xRange - 0.5) * graphWidth;
+      const y = ((projected[i].y - yMin) / yRange - 0.5) * graphHeight;
 
-    const simulation = d3
-      .forceSimulation(users as any)
-      .force('charge', d3.forceManyBody().strength(-300))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('link', d3.forceLink(users.flatMap((u1, i) =>
-        users.slice(i + 1).map((u2) => ({ source: u1, target: u2 }))
-      ) as any).distance(100));
-
-    const links = users.flatMap((u1, i) => users.slice(i + 1).map((u2) => ({ source: u1, target: u2 })));
-    
-    g.append('g')
-      .selectAll('line')
-      .data(links)
-      .enter()
-      .append('line')
-      .attr('stroke', '#e4e4e7')
-      .attr('stroke-opacity', 0.5)
-      .attr('stroke-width', 1);
-
-    const nodeGroup = g.append('g')
-      .selectAll('g')
-      .data(users)
-      .enter()
-      .append('g');
-
-    nodeGroup.append('circle')
-      .attr('r', 30)
-      .attr('fill', (d: any) => {
-        const vector = {
-          sporty: d.sporty,
-          creative: d.creative,
-          social: d.social,
-          logical: d.logical,
-          adventurous: d.adventurous,
-          calm: d.calm,
-        };
-        const topTrait = getTopTrait(vector) as PersonalityDimension;
-        return TRAIT_COLORS[topTrait] || '#71717a';
-      });
-
-    nodeGroup.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '.35em')
-      .attr('fill', 'white')
-      .attr('font-size', '12px')
-      .attr('font-weight', 'bold')
-      .text((d: any) => d.name.substring(0, 2).toUpperCase());
-
-    nodeGroup.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 50)
-      .attr('fill', '#ffffff')
-      .attr('font-size', '14px')
-      .text((d: any) => d.name);
-
-    simulation.on('tick', () => {
-      g.selectAll<SVGLineElement, any>('line')
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
-
-      nodeGroup.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+      return {
+        id: u.id,
+        name: u.name,
+        color: TRAIT_COLORS[topTrait],
+        topTrait,
+        vector,
+        x,
+        y,
+        fx: x, // Fixed x position (PCA)
+        fy: y, // Fixed y position (PCA)
+      };
     });
-  }, [users]);
 
-  useEffect(() => {
-    if (isAuthenticated && users.length > 1 && svgRef.current) {
-      renderNetwork();
+    // Create links between similar users
+    const links: GraphLink[] = [];
+    // Max distance in 6D space with 0-10 values: sqrt(6 * 10^2) = sqrt(600)
+    const maxDistance = Math.sqrt(600);
+
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const distance = calculateEuclideanDistance(nodes[i].vector, nodes[j].vector);
+        const similarity = 1 - distance / maxDistance;
+
+        // Show links with >70% similarity
+        if (similarity > 0.7) {
+          links.push({
+            source: nodes[i].id,
+            target: nodes[j].id,
+            similarity,
+          });
+        }
+      }
     }
-  }, [isAuthenticated, users, renderNetwork]);
+
+    return { nodes, links };
+  }, [users, dimensions]);
+
+  const nodeCanvasObject = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const label = node.name;
+    const fontSize = 14 / globalScale;
+    const nodeRadius = 20 / globalScale;
+
+    // Draw circle
+    ctx.beginPath();
+    ctx.arc(node.x!, node.y!, nodeRadius, 0, 2 * Math.PI);
+    ctx.fillStyle = node.color;
+    ctx.fill();
+
+    // Draw initials
+    ctx.font = `bold ${fontSize}px Sans-Serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'white';
+    ctx.fillText(label.substring(0, 2).toUpperCase(), node.x!, node.y!);
+
+    // Draw name below
+    ctx.font = `${fontSize}px Sans-Serif`;
+    ctx.fillStyle = '#a1a1aa';
+    ctx.fillText(label, node.x!, node.y! + nodeRadius + fontSize);
+  }, []);
+
+  const handleNodeHover = useCallback((node: GraphNode | null) => {
+    setHoveredNode(node);
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -230,9 +372,9 @@ export default function AdminDashboard() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Network Diagram</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Personality Map</h1>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Visualizing user similarity based on personality vectors
+              Interactive visualization using PCA projection. Drag nodes, zoom, and hover for details.
             </p>
           </div>
           <div className="flex gap-3">
@@ -253,9 +395,17 @@ export default function AdminDashboard() {
 
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              {users.length} Users Completed Quiz
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                {users.length} Users Completed Quiz
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-zinc-400'}`} />
+                <span className="text-xs text-zinc-500">
+                  {liveConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+            </div>
             <div className="flex gap-4 text-sm">
               {(Object.keys(TRAIT_COLORS) as PersonalityDimension[]).map((trait) => (
                 <div key={trait} className="flex items-center gap-1">
@@ -269,18 +419,145 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {users.length < 2 ? (
-            <div className="h-96 flex items-center justify-center text-zinc-600 dark:text-zinc-400">
-              Need at least 2 users to visualize network
-            </div>
-          ) : (
-            <svg
-              ref={svgRef}
-              width="100%"
-              height={600}
-              className="rounded-lg border border-zinc-200 dark:border-zinc-700"
-            />
-          )}
+          <div
+            ref={containerRef}
+            className="relative rounded-lg border border-zinc-200 dark:border-zinc-700"
+            style={{
+              height: 600,
+              backgroundColor: '#18181b',
+              backgroundImage: `
+                linear-gradient(rgba(63, 63, 70, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(63, 63, 70, 0.3) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+            }}
+          >
+            {users.length < 2 ? (
+              <div className="h-full flex items-center justify-center text-zinc-400">
+                Need at least 2 users to visualize
+              </div>
+            ) : (
+              <>
+                <ForceGraph2D
+                  key={users.map(u => u.id).join(',')}
+                  ref={graphRef}
+                  graphData={graphData}
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  nodeId="id"
+                  nodeCanvasObject={nodeCanvasObject as any}
+                  nodePointerAreaPaint={(node: any, color, ctx) => {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+                  }}
+                  linkColor={() => 'rgba(161, 161, 170, 0.4)'}
+                  linkWidth={(link: any) => Math.max(1, (link.similarity - 0.7) * 10)}
+                  onNodeHover={handleNodeHover as any}
+                  onNodeDrag={(node: any) => {
+                    node.fx = node.x;
+                    node.fy = node.y;
+                  }}
+                  cooldownTicks={0}
+                  enableNodeDrag={true}
+                  enableZoomInteraction={true}
+                  enablePanInteraction={true}
+                />
+
+                {/* Zoom controls */}
+                <div className="absolute bottom-4 left-4 flex flex-col gap-1">
+                  <button
+                    onClick={handleZoomIn}
+                    className="w-8 h-8 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-300 text-lg font-medium transition-colors"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={handleZoomOut}
+                    className="w-8 h-8 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-300 text-lg font-medium transition-colors"
+                  >
+                    −
+                  </button>
+                  <button
+                    onClick={handleZoomToFit}
+                    className="w-8 h-8 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-400 text-xs font-medium transition-colors"
+                    title="Fit to view"
+                  >
+                    [ ]
+                  </button>
+                </div>
+
+                {/* Info panel */}
+                <div className="absolute bottom-4 right-4">
+                  {showInfo ? (
+                    <div className="bg-zinc-800/90 rounded-lg p-3 shadow-lg border border-zinc-700 max-w-64 text-xs">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-semibold text-zinc-200">How to read this map</h4>
+                        <button
+                          onClick={() => setShowInfo(false)}
+                          className="text-zinc-500 hover:text-zinc-300 text-sm leading-none"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <ul className="space-y-1 text-zinc-400">
+                        <li><span className="text-zinc-300">Position:</span> Similar personalities are closer together (PCA projection)</li>
+                        <li><span className="text-zinc-300">Color:</span> Dominant personality trait</li>
+                        <li><span className="text-zinc-300">Lines:</span> Connect users with &gt;70% similarity</li>
+                      </ul>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowInfo(true)}
+                      className="w-8 h-8 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-400 text-sm font-medium transition-colors"
+                      title="Show info"
+                    >
+                      ?
+                    </button>
+                  )}
+                </div>
+
+                {hoveredNode && (
+                  <div className="absolute top-4 left-4 bg-zinc-800 rounded-lg p-4 shadow-lg border border-zinc-700 min-w-56">
+                    <h3 className="font-bold text-white mb-2">{hoveredNode.name}</h3>
+                    <div className="space-y-2 text-sm">
+                      {(Object.keys(TRAIT_COLORS) as PersonalityDimension[]).map((trait) => {
+                        const value = hoveredNode.vector[trait];
+                        return (
+                          <div key={trait} className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: TRAIT_COLORS[trait] }}
+                            />
+                            <span className="text-zinc-400 capitalize w-20 shrink-0">{trait}</span>
+                            <div className="bg-zinc-700 rounded-full h-2 w-20 shrink-0 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${(value / 10) * 100}%`,
+                                  backgroundColor: TRAIT_COLORS[trait],
+                                }}
+                              />
+                            </div>
+                            <span className="text-zinc-300 w-6 text-right shrink-0">
+                              {value}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-zinc-700">
+                      <span className="text-zinc-400">Top trait: </span>
+                      <span className="font-medium capitalize" style={{ color: hoveredNode.color }}>
+                        {hoveredNode.topTrait}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
