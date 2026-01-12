@@ -13,6 +13,7 @@ export default function ResultsPage() {
   const [matches, setMatches] = useState<{ id: number; name: string; distance: number; isNew?: boolean }[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [liveConnected, setLiveConnected] = useState(false);
+  const [calculationOpen, setCalculationOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -176,6 +177,76 @@ export default function ResultsPage() {
             </div>
           </div>
         )}
+
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
+          <button
+            onClick={() => setCalculationOpen(!calculationOpen)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+              How Similarity is Calculated
+            </h2>
+            <svg
+              className={`w-6 h-6 text-zinc-600 dark:text-zinc-400 transition-transform duration-200 ${
+                calculationOpen ? 'rotate-180' : ''
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {calculationOpen && (
+            <div className="mt-6 space-y-6 text-zinc-700 dark:text-zinc-300">
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">
+                  What is Euclidean Distance?
+                </h3>
+                <p className="mb-2">
+                  Euclidean distance is a way to measure how far apart two things are in a mathematical space. It's like measuring the straight-line distance between two points.
+                </p>
+                <p>
+                  In this quiz, we measure your personality as a point in 6-dimensional space (one dimension for each personality trait). The closer two people are, the more similar their personalities are.
+                </p>
+              </div>
+
+              <div className="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg">
+                <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">The Formula:</h4>
+                <div className="text-center text-lg font-mono bg-zinc-50 dark:bg-zinc-700 p-3 rounded">
+                  d = √((x₁-x₂)² + (y₁-y₂)² + ...)
+                </div>
+                <p className="text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+                  We calculate the difference between your scores and someone else's scores for each trait, square each difference, add them up, then take the square root.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">
+                  How It Works
+                </h3>
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>You answer 6 questions, each on a scale of 0-10</li>
+                  <li>Your answers become a "vector" in 6-dimensional space</li>
+                  <li>We compare your vector with everyone else's vectors</li>
+                  <li>The smaller the distance, the more similar you are!</li>
+                </ol>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  <strong>Example:</strong> If you score 8 on "sporty" and someone else scores 7, that's a difference of 1. If you both score 5 on "calm", that's a difference of 0. Smaller differences = more similar!
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {matches && matches.length > 0 && (
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">

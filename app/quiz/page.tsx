@@ -83,7 +83,7 @@ export default function QuizPage() {
         return;
       }
 
-      router.push('/calculation');
+      router.push('/results');
     } catch {
       setError('Failed to connect to server');
       setIsLoading(false);
