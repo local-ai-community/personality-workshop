@@ -94,14 +94,14 @@ export default function QuizPage() {
   const currentValue = answers[dimension] ?? 5;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black p-4">
-      <div className="w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-        <div className="mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black p-2 sm:p-4">
+      <div className="w-full max-w-lg sm:max-w-2xl bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
               Question {currentQuestion + 1} of {questions.length}
             </span>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
               {currentQuestion + 1}/{questions.length}
             </span>
           </div>
@@ -113,11 +113,11 @@ export default function QuizPage() {
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-8 text-center">
+        <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-6 sm:mb-8 text-center px-2">
           {question}
         </h2>
 
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <input
             type="range"
             min="0"
@@ -126,33 +126,33 @@ export default function QuizPage() {
             onChange={(e) => handleSliderChange(dimension, e.target.value)}
             className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-white"
           />
-          <div className="flex justify-between mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <span>0 - Not at all</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white">
+          <div className="flex justify-between items-center mt-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+            <span className="text-left">0 - Not at all</span>
+            <span className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white px-2">
               {currentValue}
             </span>
-            <span>10 - Very much so</span>
+            <span className="text-right">10 - Very much so</span>
           </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-red-700 dark:text-red-400 text-sm">
+          <div className="mb-4 sm:mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-red-700 dark:text-red-400 text-xs sm:text-sm">
             {error}
           </div>
         )}
 
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-2 sm:gap-0">
           <button
             onClick={handleBack}
             disabled={currentQuestion === 0 || isLoading}
-            className="px-6 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 sm:flex-none px-4 sm:px-6 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             Back
           </button>
           <button
             onClick={handleNext}
             disabled={isLoading}
-            className="px-6 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
           >
             {isLoading
               ? 'Submitting...'

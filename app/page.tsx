@@ -40,11 +40,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black p-4">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 text-center">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 sm:p-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-2 text-center">
           Personality Quiz
         </h1>
-        <p className="text-zinc-600 dark:text-zinc-400 mb-6 text-center">
+        <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mb-6 text-center">
           Discover your personality and find similar people
         </p>
 
@@ -58,9 +58,10 @@ export default function LoginPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+              className="w-full px-4 py-2 text-base border border-zinc-300 dark:border-zinc-700 rounded-md focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
               placeholder="Enter your first name"
               required
+              autoCapitalize="words"
             />
           </div>
 
@@ -73,7 +74,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-2 px-4 rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-2.5 sm:py-3 px-4 rounded-md hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base"
           >
             {isLoading ? 'Starting...' : 'Start Quiz'}
           </button>

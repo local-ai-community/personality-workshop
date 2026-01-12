@@ -130,45 +130,45 @@ export default function ResultsPage() {
   const topTrait = vector ? getTopTrait(vector) : null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+    <div className="min-h-screen bg-zinc-50 dark:bg-black p-2 sm:p-4">
+      <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white mb-2 text-center sm:text-left">
             Your Results, {userName}!
           </h1>
           {topTrait && (
-            <p className="text-zinc-600 dark:text-zinc-400">
+            <p className="text-zinc-600 dark:text-zinc-400 text-center sm:text-left">
               Your strongest trait is <span className="font-semibold text-zinc-900 dark:text-white capitalize">{topTrait}</span>
             </p>
           )}
         </div>
 
         {vector && (
-          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6 text-center">Your Personality Radar</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-4 sm:mb-6 text-center">Your Personality Radar</h2>
             <RadarChart data={vector} />
           </div>
         )}
 
         {vector && (
-          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">Your Personality Scores</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-4 sm:mb-6">Your Personality Scores</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
               {Object.entries(vector).map(([key, value]) => {
                 const isTopTrait = key === topTrait;
                 return (
                   <div
                     key={key}
-                    className={`p-4 rounded-lg border-2 ${
+                    className={`p-3 sm:p-4 rounded-lg border-2 ${
                       isTopTrait
                         ? 'border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800'
                         : 'border-zinc-200 dark:border-zinc-700'
                     }`}
                   >
-                    <div className="text-sm text-zinc-600 dark:text-zinc-400 capitalize mb-1">
+                    <div className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 capitalize mb-1">
                       {key}
                     </div>
-                    <div className="text-3xl font-bold text-zinc-900 dark:text-white">
+                    <div className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-white">
                       {value}
                     </div>
                   </div>
@@ -178,12 +178,12 @@ export default function ResultsPage() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
           <button
             onClick={() => setCalculationOpen(!calculationOpen)}
             className="w-full flex items-center justify-between text-left"
           >
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+            <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
               How Similarity is Calculated
             </h2>
             <svg
@@ -204,9 +204,9 @@ export default function ResultsPage() {
           </button>
 
           {calculationOpen && (
-            <div className="mt-6 space-y-6 text-zinc-700 dark:text-zinc-300">
+            <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6 text-zinc-700 dark:text-zinc-300 text-sm sm:text-base">
               <div>
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">
+                <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white mb-2 sm:mb-3">
                   What is Euclidean Distance?
                 </h3>
                 <p className="mb-2">
@@ -217,21 +217,21 @@ export default function ResultsPage() {
                 </p>
               </div>
 
-              <div className="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg">
+              <div className="bg-zinc-100 dark:bg-zinc-800 p-3 sm:p-4 rounded-lg">
                 <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">The Formula:</h4>
-                <div className="text-center text-lg font-mono bg-zinc-50 dark:bg-zinc-700 p-3 rounded">
+                <div className="text-center text-base sm:text-lg font-mono bg-zinc-50 dark:bg-zinc-700 p-2 sm:p-3 rounded">
                   d = √((x₁-x₂)² + (y₁-y₂)² + ...)
                 </div>
-                <p className="text-sm mt-2 text-zinc-600 dark:text-zinc-400">
+                <p className="text-xs sm:text-sm mt-2 text-zinc-600 dark:text-zinc-400">
                   We calculate the difference between your scores and someone else's scores for each trait, square each difference, add them up, then take the square root.
                 </p>
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">
+                <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white mb-2 sm:mb-3">
                   How It Works
                 </h3>
-                <ol className="list-decimal list-inside space-y-2">
+                <ol className="list-decimal list-inside space-y-1 sm:space-y-2">
                   <li>You answer 6 questions, each on a scale of 0-10</li>
                   <li>Your answers become a "vector" in 6-dimensional space</li>
                   <li>We compare your vector with everyone else's vectors</li>
@@ -239,8 +239,8 @@ export default function ResultsPage() {
                 </ol>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 sm:p-4 rounded-lg">
+                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300">
                   <strong>Example:</strong> If you score 8 on "sporty" and someone else scores 7, that's a difference of 1. If you both score 5 on "calm", that's a difference of 0. Smaller differences = more similar!
                 </p>
               </div>
@@ -249,9 +249,9 @@ export default function ResultsPage() {
         </div>
 
         {matches && matches.length > 0 && (
-          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Your Top Matches</h2>
+          <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">Your Top Matches</h2>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${liveConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -259,11 +259,11 @@ export default function ResultsPage() {
                 </span>
               </div>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {matches.map((match, index) => (
                 <div
                   key={match.id}
-                  className={`flex items-center justify-between p-4 rounded-lg transition-all duration-300 ${
+                  className={`flex items-center justify-between p-3 sm:p-4 rounded-lg transition-all duration-300 ${
                     match.isNew
                       ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-400'
                       : 'bg-zinc-50 dark:bg-zinc-800'
@@ -276,11 +276,11 @@ export default function ResultsPage() {
                     }
                   }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold">
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm sm:text-base">
                       {index + 1}
                     </div>
-                    <span className="text-lg font-medium text-zinc-900 dark:text-white">
+                    <span className="text-base sm:text-lg font-medium text-zinc-900 dark:text-white">
                       {match.name}
                       {match.isNew && (
                         <span className="ml-2 text-xs px-2 py-1 bg-green-500 text-white rounded-full animate-pulse">
@@ -289,8 +289,9 @@ export default function ResultsPage() {
                       )}
                     </span>
                   </div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Distance: <span className="font-semibold text-zinc-900 dark:text-white">{match.distance.toFixed(2)}</span>
+                  <div className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+                    <span className="hidden sm:inline">Distance: </span>
+                    <span className="font-semibold text-zinc-900 dark:text-white">{match.distance.toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -298,10 +299,10 @@ export default function ResultsPage() {
           </div>
         )}
 
-        <div className="flex justify-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
           <button
             onClick={() => router.push('/quiz')}
-            className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors font-medium"
+            className="w-full sm:w-auto px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors font-medium"
           >
             Retake Quiz
           </button>
@@ -311,7 +312,7 @@ export default function ResultsPage() {
               localStorage.removeItem('userName');
               router.push('/');
             }}
-            className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
+            className="w-full sm:w-auto px-6 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors font-medium"
           >
             Log Out
           </button>

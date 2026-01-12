@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Personality Workshop",
   description: "Discover your personality traits and find people similar to you. Take our interactive personality quiz and see live results with real-time matching.",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { PersonalityVector, PERSONALITY_QUESTIONS } from '@/types';
 
@@ -10,6 +10,28 @@ interface RadarChartProps {
 
 export default function RadarChart({ data }: RadarChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 400, height: 400 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        const isMobile = containerWidth < 400;
+        const size = isMobile ? Math.min(containerWidth - 32, 350) : 400;
+        setDimensions({ width: size, height: size });
+      }
+    };
+
+    updateDimensions();
+
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || !data) return;
@@ -17,13 +39,16 @@ export default function RadarChart({ data }: RadarChartProps) {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const width = 400;
-    const height = 400;
-    const margin = 50;
+    const { width, height } = dimensions;
+    const isMobile = width < 400;
+    const margin = isMobile ? 35 : 50;
     const radius = Math.min(width, height) / 2 - margin;
+    const labelFontSize = isMobile ? '10px' : '12px';
+    const levelFontSize = isMobile ? '8px' : '10px';
+    const labelOffset = isMobile ? 1.25 : 1.15;
 
-    const dimensions = Object.keys(PERSONALITY_QUESTIONS) as Array<keyof PersonalityVector>;
-    const angleSlice = (Math.PI * 2) / dimensions.length;
+    const chartDimensions = Object.keys(PERSONALITY_QUESTIONS) as Array<keyof PersonalityVector>;
+    const angleSlice = (Math.PI * 2) / chartDimensions.length;
 
     const radarScale = d3.scaleLinear().domain([0, 10]).range([0, radius]);
 
@@ -32,7 +57,7 @@ export default function RadarChart({ data }: RadarChartProps) {
     const levels = 5;
     for (let i = 0; i < levels; i++) {
       const levelFactor = radius * ((i + 1) / levels);
-      const levelData = dimensions.map((_, j) => ({
+      const levelData = chartDimensions.map((_, j) => ({
         x: levelFactor * Math.cos(angleSlice * j - Math.PI / 2),
         y: levelFactor * Math.sin(angleSlice * j - Math.PI / 2),
       }));
@@ -49,11 +74,11 @@ export default function RadarChart({ data }: RadarChartProps) {
         .attr('y', -levelFactor + 5)
         .attr('text-anchor', 'middle')
         .attr('fill', '#ffffff')
-        .attr('font-size', '10px')
+        .attr('font-size', levelFontSize)
         .text((i + 1) * 2);
     }
 
-    const axisLines = dimensions.map((d, i) => ({
+    const axisLines = chartDimensions.map((d, i) => ({
       x: radius * Math.cos(angleSlice * i - Math.PI / 2),
       y: radius * Math.sin(angleSlice * i - Math.PI / 2),
       label: d,
@@ -74,16 +99,16 @@ export default function RadarChart({ data }: RadarChartProps) {
       .data(axisLines)
       .enter()
       .append('text')
-      .attr('x', (d: any) => d.x * 1.15)
-      .attr('y', (d: any) => d.y * 1.15)
+      .attr('x', (d: any) => d.x * labelOffset)
+      .attr('y', (d: any) => d.y * labelOffset)
       .attr('text-anchor', (d: any) => (d.x > 0 ? 'start' : d.x < 0 ? 'end' : 'middle'))
       .attr('dominant-baseline', (d: any) => (d.y > 0 ? 'hanging' : d.y < 0 ? 'auto' : 'middle'))
       .attr('fill', '#ffffff')
-      .attr('font-size', '12px')
+      .attr('font-size', labelFontSize)
       .attr('font-weight', '500')
       .text((d: any) => d.label);
 
-    const polygonData = dimensions.map((d, i) => ({
+    const polygonData = chartDimensions.map((d, i) => ({
       x: radarScale(data[d]) * Math.cos(angleSlice * i - Math.PI / 2),
       y: radarScale(data[d]) * Math.sin(angleSlice * i - Math.PI / 2),
     }));
@@ -101,16 +126,16 @@ export default function RadarChart({ data }: RadarChartProps) {
       .append('circle')
       .attr('cx', (d: any) => d.x)
       .attr('cy', (d: any) => d.y)
-      .attr('r', 4)
+      .attr('r', isMobile ? 3 : 4)
       .attr('fill', '#3b82f6');
-  }, [data]);
+  }, [data, dimensions]);
 
   return (
-    <div className="flex justify-center">
+    <div ref={containerRef} className="flex justify-center w-full">
       <svg
         ref={svgRef}
-        width={400}
-        height={400}
+        width={dimensions.width}
+        height={dimensions.height}
         className="rounded-lg"
       />
     </div>
